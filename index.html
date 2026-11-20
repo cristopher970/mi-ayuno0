@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>FastTrack Web — Control de Ayuno</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-hover: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 20px 16px 40px;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 460px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Protocol Selector */
+    .protocols {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .protocols::-webkit-scrollbar { display: none; }
+
+    .proto-btn {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .proto-btn.active {
+      background: var(--accent);
+      color: #0f172a;
+      border-color: var(--accent);
+    }
+
+    /* Circular Timer */
+    .timer-wrapper {
+      position: relative;
+      width: 240px;
+      height: 240px;
+      margin: 10px auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .timer-svg {
+      transform: rotate(-90deg);
+      width: 240px;
+      height: 240px;
+    }
+
+    .circle-bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.07);
+      stroke-width: 12;
+    }
+
+    .circle-progress {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 12;
+      stroke-linecap: round;
+      stroke-dasharray: 653.45; /* 2 * PI * 104 */
+      stroke-dashoffset: 653.45;
+      transition: stroke-dashoffset 0.5s ease, stroke 0.4s ease;
+    }
+
+    .timer-center {
+      position: absolute;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .status-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .time-main {
+      font-size: 2.2rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+    }
+
+    .time-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* Times Info */
+    .times-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .time-box {
+      background: rgba(15, 23, 42, 0.5);
+      padding: 10px 12px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .time-box span {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+
+    .time-box strong {
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    .edit-link {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 0.75rem;
+      text-decoration: underline;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    /* Main Action Button */
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+
+    .btn-primary:active { transform: scale(0.98); }
+
+    .btn-start {
+      background: var(--accent);
+      color: #0f172a;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .btn-stop {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Metabolic Phase Card */
+    .phase-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .phase-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .phase-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    /* Stats & History */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    .stat-item {
+      background: rgba(15, 23, 42, 0.5);
+      padding: 10px 6px;
+      border-radius: 12px;
+    }
+
+    .stat-item strong {
+      display: block;
+      font-size: 1.15rem;
+      color: var(--text);
+    }
+
+    .stat-item span {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .history-header h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .history-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-small {
+      background: rgba(255, 255, 255, 0.07);
+      border: none;
+      color: var(--muted);
+      padding: 5px 9px;
+      border-radius: 8px;
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+
+    .btn-small:hover { color: var(--text); }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      background: rgba(15, 23, 42, 0.5);
+      padding: 10px 12px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+    }
+
+    .history-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .history-date {
+      color: var(--muted);
+      font-size: 0.73rem;
+    }
+
+    .history-badge {
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.75rem;
+    }
+
+    .goal-met {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+    }
+
+    .goal-partial {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+    }
+
+    /* Modal for editing start time */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 50;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: var(--card);
+      padding: 20px;
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 340px;
+    }
+
+    .modal h3 {
+      font-size: 1rem;
+      margin-bottom: 12px;
+    }
+
+    .modal input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: var(--bg);
+      color: var(--text);
+      margin-bottom: 14px;
+      font-size: 0.95rem;
+    }
+
+    .modal-btns {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>⏱️ FastTrack <span class="badge">100% LOCAL</span></h1>
+      <span id="clockNow" style="font-size: 0.8rem; color: var(--muted);"></span>
+    </header>
+
+    <!-- Main Timer Card -->
+    <div class="card">
+      <div class="protocols" id="protocolList">
+        <button class="proto-btn" data-hours="14">14:10</button>
+        <button class="proto-btn active" data-hours="16">16:8</button>
+        <button class="proto-btn" data-hours="18">18:6</button>
+        <button class="proto-btn" data-hours="20">20:4</button>
+        <button class="proto-btn" data-hours="23">OMAD (23:1)</button>
+        <button class="proto-btn" id="customProtoBtn">Personalizado</button>
+      </div>
+
+      <div class="timer-wrapper">
+        <svg class="timer-svg" viewBox="0 0 240 240">
+          <circle class="circle-bg" cx="120" cy="120" r="104"></circle>
+          <circle class="circle-progress" id="progressRing" cx="120" cy="120" r="104"></circle>
+        </svg>
+        <div class="timer-center">
+          <span class="status-label" id="statusLabel">LISTO PARA AYUNAR</span>
+          <div class="time-main" id="elapsedDisplay">00:00:00</div>
+          <div class="time-sub" id="remainingDisplay">Meta: 16h 00m</div>
+        </div>
+      </div>
+
+      <div class="times-grid">
+        <div class="time-box">
+          <span>INICIO</span>
+          <strong id="startTimeText">--:--</strong>
+          <button class="edit-link" id="editStartBtn" style="display: none;">Editar inicio</button>
+        </div>
+        <div class="time-box">
+          <span>FIN ESTIMADO</span>
+          <strong id="endTimeText">--:--</strong>
+        </div>
+      </div>
+
+      <button class="btn-primary btn-start" id="toggleFastBtn">Iniciar Ayuno</button>
+    </div>
+
+    <!-- Metabolic Phase Card -->
+    <div class="card">
+      <div class="phase-header">
+        <span class="phase-title" id="phaseTitle">Estado Basal</span>
+        <span class="badge" id="phasePct">0%</span>
+      </div>
+      <p class="phase-desc" id="phaseDesc">
+        Selecciona tu protocolo e inicia el temporizador para monitorear tus etapas metabólicas en tiempo real.
+      </p>
+    </div>
+
+    <!-- Stats & History Card -->
+    <div class="card">
+      <div class="stats-row">
+        <div class="stat-item">
+          <strong id="statTotal">0</strong>
+          <span>Ayunos</span>
+        </div>
+        <div class="stat-item">
+          <strong id="statHours">0h</strong>
+          <span>Horas totales</span>
+        </div>
+        <div class="stat-item">
+          <strong id="statLongest">0h</strong>
+          <span>Récord</span>
+        </div>
+      </div>
+
+      <div class="history-header">
+        <h2>Historial reciente</h2>
+        <div class="history-actions">
+          <button class="btn-small" id="exportBtn">Exportar</button>
+          <button class="btn-small" id="importBtn">Importar</button>
+          <input type="file" id="importFile" accept=".json" style="display: none;" />
+        </div>
+      </div>
+
+      <div class="history-list" id="historyList">
+        <p style="font-size: 0.8rem; color: var(--muted); text-align: center; padding: 12px 0;">
+          Aún no tienes ayunos registrados.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Edit Start Time -->
+  <div class="modal-backdrop" id="editModal">
+    <div class="modal">
+      <h3>Editar hora de inicio</h3>
+      <input type="datetime-local" id="startInput" />
+      <div class="modal-btns">
+        <button class="btn-small" id="cancelEditBtn">Cancelar</button>
+        <button class="btn-small" style="background: var(--accent); color: #0f172a; font-weight: 700;" id="saveEditBtn">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'fasttrack_web_data_v1';
+    const CIRCUMFERENCE = 2 * Math.PI * 104;
+
+    let state = {
+      isFasting: false,
+      startTime: null,
+      targetHours: 16,
+      history: []
+    };
+
+    // Load saved state
+    function loadState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          state = { ...state, ...JSON.parse(raw) };
+        } catch (e) {
+          console.error('Error leyendo datos locales', e);
+        }
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    // Elements
+    const progressRing = document.getElementById('progressRing');
+    const statusLabel = document.getElementById('statusLabel');
+    const elapsedDisplay = document.getElementById('elapsedDisplay');
+    const remainingDisplay = document.getElementById('remainingDisplay');
+    const startTimeText = document.getElementById('startTimeText');
+    const endTimeText = document.getElementById('endTimeText');
+    const editStartBtn = document.getElementById('editStartBtn');
+    const toggleFastBtn = document.getElementById('toggleFastBtn');
+    const phaseTitle = document.getElementById('phaseTitle');
+    const phaseDesc = document.getElementById('phaseDesc');
+    const phasePct = document.getElementById('phasePct');
+    const protocolBtns = document.querySelectorAll('.proto-btn[data-hours]');
+    const customProtoBtn = document.getElementById('customProtoBtn');
+
+    // Formatting helpers
+    function pad(n) {
+      return String(Math.floor(n)).padStart(2, '0');
+    }
+
+    function formatDuration(ms) {
+      const totalSec = Math.max(0, Math.floor(ms / 1000));
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+
+    function formatDateShort(ts) {
+      const d = new Date(ts);
+      const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      return `${days[d.getDay()]} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function getMetabolicPhase(hours) {
+      if (hours < 4) {
+        return {
+          title: '0–4h · Fase Anabólica (Digestión)',
+          desc: 'Tu cuerpo está digiriendo la última comida. La glucosa en sangre e insulina suben para almacenar energía.'
+        };
+      } else if (hours < 12) {
+        return {
+          title: '4–12h · Caída de Insulina',
+          desc: 'Bajan los niveles de insulina y el cuerpo empieza a agotar las reservas de glucógeno hepático.'
+        };
+      } else if (hours < 16) {
+        return {
+          title: '12–16h · Quema de Grasa',
+          desc: 'El glucógeno está bajo y el organismo comienza a movilizar ácidos grasos como fuente principal de energía.'
+        };
+      } else if (hours < 24) {
+        return {
+          title: '16–24h · Cetosis Activa',
+          desc: 'Aumenta la producción de cuerpos cetónicos, mejorando la claridad mental y la oxidación de grasas.'
+        };
+      } else {
+        return {
+          title: '24h+ · Autofagia Profunda',
+          desc: 'Se intensifica el reciclaje celular y la renovación de proteínas dañadas.'
+        };
+      }
+    }
+
+    function updateProtocolUI() {
+      let matched = false;
+      protocolBtns.forEach(btn => {
+        const h = Number(btn.dataset.hours);
+        if (h === state.targetHours) {
+          btn.classList.add('active');
+          matched = true;
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+      if (!matched) {
+        customProtoBtn.classList.add('active');
+        customProtoBtn.textContent = `${state.targetHours}h`;
+      } else {
+        customProtoBtn.classList.remove('active');
+        customProtoBtn.textContent = 'Personalizado';
+      }
+    }
+
+    function renderHistory() {
+      const list = document.getElementById('historyList');
+      const totalEl = document.getElementById('statTotal');
+      const hoursEl = document.getElementById('statHours');
+      const longestEl = document.getElementById('statLongest');
+
+      totalEl.textContent = state.history.length;
+      const sumHours = state.history.reduce((acc, item) => acc + item.durationHours, 0);
+      const maxHours = state.history.reduce((max, item) => Math.max(max, item.durationHours), 0);
+
+      hoursEl.textContent = `${Math.round(sumHours)}h`;
+      longestEl.textContent = `${maxHours.toFixed(1)}h`;
+
+      if (state.history.length === 0) {
+        list.innerHTML = `<p style="font-size: 0.8rem; color: var(--muted); text-align: center; padding: 12px 0;">Aún no tienes ayunos registrados.</p>`;
+        return;
+      }
+
+      list.innerHTML = state.history.slice().reverse().map((item, idx) => {
+        const met = item.durationHours >= item.targetHours;
+        const realIdx = state.history.length - 1 - idx;
+        return `
+          <div class="history-item">
+            <div class="history-meta">
+              <strong>${item.durationHours.toFixed(1)}h / ${item.targetHours}h</strong>
+              <span class="history-date">${formatDateShort(item.startTime)} → ${formatDateShort(item.endTime)}</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="history-badge ${met ? 'goal-met' : 'goal-partial'}">
+                ${met ? 'Completado' : 'Parcial'}
+              </span>
+              <button class="btn-small" onclick="deleteHistory(${realIdx})" title="Eliminar">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.deleteHistory = function(index) {
+      if (confirm('¿Eliminar este registro del historial?')) {
+        state.history.splice(index, 1);
+        saveState();
+        renderHistory();
+      }
+    };
+
+    function tick() {
+      const now = Date.now();
+      document.getElementById('clockNow').textContent = new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      const targetMs = state.targetHours * 3600 * 1000;
+
+      if (!state.isFasting) {
+        statusLabel.textContent = 'LISTO PARA AYUNAR';
+        elapsedDisplay.textContent = '00:00:00';
+        remainingDisplay.textContent = `Meta: ${state.targetHours}h 00m`;
+        startTimeText.textContent = '--:--';
+        endTimeText.textContent = '--:--';
+        editStartBtn.style.display = 'none';
+        toggleFastBtn.textContent = 'Iniciar Ayuno';
+        toggleFastBtn.className = 'btn-primary btn-start';
+        progressRing.style.strokeDashoffset = CIRCUMFERENCE;
+        progressRing.style.stroke = 'var(--accent)';
+        phasePct.textContent = '0%';
+        return;
+      }
+
+      const elapsedMs = Math.max(0, now - state.startTime);
+      const elapsedHours = elapsedMs / (3600 * 1000);
+      const pct = Math.min(100, (elapsedMs / targetMs) * 100);
+      const offset = CIRCUMFERENCE - (pct / 100) * CIRCUMFERENCE;
+
+      progressRing.style.strokeDashoffset = offset;
+      progressRing.style.stroke = pct >= 100 ? 'var(--success)' : 'var(--accent)';
+
+      statusLabel.textContent = pct >= 100 ? '¡META CUMPLIDA!' : 'AYUNANDO';
+      elapsedDisplay.textContent = formatDuration(elapsedMs);
+
+      if (elapsedMs < targetMs) {
+        const remMs = targetMs - elapsedMs;
+        const remH = Math.floor(remMs / 3600000);
+        const remM = Math.floor((remMs % 3600000) / 60000);
+        remainingDisplay.textContent = `Faltan ${remH}h ${pad(remM)}m (${Math.floor(pct)}%)`;
+      } else {
+        const extraMs = elapsedMs - targetMs;
+        const extH = Math.floor(extraMs / 3600000);
+        const extM = Math.floor((extraMs % 3600000) / 60000);
+        remainingDisplay.textContent = `Extra: +${extH}h ${pad(extM)}m`;
+      }
+
+      startTimeText.textContent = formatDateShort(state.startTime);
+      endTimeText.textContent = formatDateShort(state.startTime + targetMs);
+      editStartBtn.style.display = 'inline-block';
+
+      toggleFastBtn.textContent = 'Finalizar Ayuno';
+      toggleFastBtn.className = 'btn-primary btn-stop';
+
+      const phase = getMetabolicPhase(elapsedHours);
+      phaseTitle.textContent = phase.title;
+      phaseDesc.textContent = phase.desc;
+      phasePct.textContent = `${Math.floor(pct)}%`;
+    }
+
+    // Event Listeners
+    protocolBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.targetHours = Number(btn.dataset.hours);
+        saveState();
+        updateProtocolUI();
+        tick();
+      });
+    });
+
+    customProtoBtn.addEventListener('click', () => {
+      const val = prompt('Ingresa las horas de ayuno objetivo (ej. 15, 24, 36):', state.targetHours);
+      const num = Number(val);
+      if (num && num >= 1 && num <= 168) {
+        state.targetHours = num;
+        saveState();
+        updateProtocolUI();
+        tick();
+      }
+    });
+
+    toggleFastBtn.addEventListener('click', () => {
+      if (!state.isFasting) {
+        state.isFasting = true;
+        state.startTime = Date.now();
+        saveState();
+        tick();
+      } else {
+        const endTime = Date.now();
+        const durationHours = (endTime - state.startTime) / (3600 * 1000);
+        if (durationHours < 0.05) {
+          if (!confirm('El ayuno dura menos de 3 minutos. ¿Descartar sin guardar?')) return;
+        } else {
+          state.history.push({
+            startTime: state.startTime,
+            endTime: endTime,
+            targetHours: state.targetHours,
+            durationHours: durationHours
+          });
+        }
+        state.isFasting = false;
+        state.startTime = null;
+        saveState();
+        renderHistory();
+        tick();
+      }
+    });
+
+    // Edit Start Time Modal
+    const editModal = document.getElementById('editModal');
+    const startInput = document.getElementById('startInput');
+
+    editStartBtn.addEventListener('click', () => {
+      const d = new Date(state.startTime);
+      const localISO = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      startInput.value = localISO;
+      editModal.classList.add('open');
+    });
+
+    document.getElementById('cancelEditBtn').addEventListener('click', () => {
+      editModal.classList.remove('open');
+    });
+
+    document.getElementById('saveEditBtn').addEventListener('click', () => {
+      const parsed = new Date(startInput.value).getTime();
+      if (!isNaN(parsed) && parsed <= Date.now()) {
+        state.startTime = parsed;
+        saveState();
+        tick();
+        editModal.classList.remove('open');
+      } else {
+        alert('La fecha de inicio no puede ser en el futuro.');
+      }
+    });
+
+    // Export / Import JSON
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ayunos-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    const importFile = document.getElementById('importFile');
+    document.getElementById('importBtn').addEventListener('click', () => importFile.click());
+    importFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const imported = JSON.parse(ev.target.result);
+          if (Array.isArray(imported.history)) {
+            state = { ...state, ...imported };
+            saveState();
+            updateProtocolUI();
+            renderHistory();
+            tick();
+            alert('Historial importado correctamente.');
+          }
+        } catch {
+          alert('El archivo no tiene un formato válido.');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // Init
+    loadState();
+    updateProtocolUI();
+    renderHistory();
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
